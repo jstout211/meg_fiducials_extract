@@ -16,16 +16,6 @@ import logging
 
 logger = logging.Logger('logger')
 
-# from scipy.io import loadmat
-# import matlab.engine 
-# eng = matlab.engine.start_matlab()
-
-# fname = 'espmeeg_APBWVFAR_airpuff_20200122_05.mat'
-# Obj = eng.load(fname, '-mat', 'D')       #['inverse'] #['lib']
-# Names = eng.getfield(Obj, 'name')
-# Strs = eng.getfield(Obj, 'structures')
-# StrLists = eng.getfield(Obj, 'structlist')
-
 # =============================================================================
 # SPM does not work with the typical scipy loadmat or matlab python engine
 #
@@ -142,70 +132,95 @@ def _confirm_inputs(spm_meg_fname=None,
         _mri_fids = _inv_struct['datareg']['fid_mri']['fid']
         _label = _mri_fids['label'] 
         _pnt = _mri_fids['pnt'] 
-        # spm_fids = {i:j for i,j in zip(_label, _pnt)}
     except BaseException() as e:
         logger.exception(f'''Could not load the fiducials''')
         
     return _aff, _datareg, _label, _pnt
 
 
-def main(affine=None,
+def get_fid_locations(affine=None,
          coreg=None, 
          spm_fid_label=None, 
          spm_fid_pnt=None, 
          nii_fname=None):
+    '''
+    Convert the SPM coregistration to image voxels.
+    Typically called through main
     
+    Get fids from SPM - from SPM listserve
+    apply 
+        D.inv{val}.mesh.Affine\D.inv{val}.datareg.toMNI
+    to 
+        D.inv{val}.datareg.fid_mri.fid.fid.pnt
+    
+    Parameters
+    ----------
+    affine : 2D- numpy mat, required
+        Affine matrix from SPM
+    coreg : 2D- numpy mat, required
+        Tranformation matrix from SPM
+    spm_fid_label : list strings, required
+        Fiducial labels from SPM. The default is None.
+    spm_fid_pnt : list of 1X3 number list, required
+        Fiducial locations from SPM. The default is None.
+    nii_fname : path string, required
+        Path to original nifti image imported to SPM. The default is None.
+
+    Returns
+    -------
+    fids_orig_vox : dictionary
+        Dictionary of fiducial names (keys) and fiducial locations (values)
+    '''
     inv_mat = np.linalg.inv(affine) @ coreg
     origMR_pnts = apply_trans(inv_mat, spm_fid_pnt)
     
     fids_orig_mm = {i:j for i,j in zip(spm_fid_label, origMR_pnts)}
     fids_orig_vox = convert2vox(nii_fname, fids_orig_mm)
     return fids_orig_vox
+
+
+def main(spm_meg_fname=None, 
+        nii_fname=None, 
+        orig_meg_fname=None):
+    '''
+    Convert the SPM coregistration to image voxels.
     
+    Calls subroutines: _confirm_inputs and get_fid_locations
+
+    Parameters
+    ----------
+    spm_meg_fname : path string, required
+        Path to spm .mat file.
+    nii_fname : path string, required
+        Path to original nifti image imported to SPM
+    orig_meg_fname : path string, required
+        Original vendor meg file.
+
+    Returns
+    -------
+    fid_dict : dictionary
+        Dictionary of fiducial names (keys) and fiducial locations (values)
+    '''
+    
+    affine, coreg, fid_label, fid_pnt = _confirm_inputs(
+        spm_meg_fname=spm_meg_fname, 
+        nii_fname=nii_fname, 
+        orig_meg_fname=orig_meg_fname)
+    
+    fid_dict = get_fid_locations(affine=affine,
+                     coreg=coreg, 
+                     spm_fid_label=fid_label, 
+                     spm_fid_pnt=fid_pnt, 
+                     nii_fname=args.t1w_nii)
+    return fid_dict
         
-
-
-                             
         
-        
-    
-    
-    
-
-
-
-
-# spm_meg_fname='espmeeg_APBWVFAR_airpuff_20200122_05.mat'
-# nii_fname = '/fast/OPEN/APBWVFAR/APBWVFAR.nii'
-# mr_obj = nb.load(nii_fname)
-
-
-
-# #MRI locations
-# # D.other.inv{1}.datareg.fid_mri.fid.pnt
-# # mri_fids =  D['other']['inv']['datareg']['fid_mri']['fid']
-
-# _label = mri_fids['label'] 
-# _pnt = mri_fids['pnt'] 
-# fids = {i:j for i,j in zip(_label, _pnt)}
-
-# =============================================================================
-# Get fids from SPM - from SPM listserve
-# apply D.inv{val}.mesh.Affine\D.inv{val}.datareg.toMNI
-# to D.inv{val}.datareg.fid_mri.fid.fid.pnt
-# =============================================================================
-
-
-# inv_mat = np.linalg.inv(D['other']['inv']['mesh']['Affine']) @ \
-#     D['other']['inv']['datareg']['toMNI']
-# origMR_pnts = apply_trans(inv_mat, _pnt)
-
-# fids_orig_mm = {i:j for i,j in zip(_label, origMR_pnts)}
-# fids_orig_vox = convert2vox(nii_fname, fids_orig_mm)
-
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='''Extract the positions of the fiducials from the SPM
+        mat file and invert the transform to get the original locations of the
+        fiducials relative to the input nifti image''')
     parser.add_argument('-t1w_nii',
                         help='''Original T1w nifti image used for coregstration
                         in SPM''',
@@ -216,7 +231,8 @@ if __name__ == '__main__':
                         performed in order for this script to work.''',
                         required=True)
     parser.add_argument('-orig_meg', 
-                        help='''The original dataset (CTF, MEGIN, 4D, KIT/Ricoh
+                        help='''The original dataset in:
+                            CTF, MEGIN, 4D, or KIT/Ricoh format
                         ''',
                         required=True)
     parser.add_argument('-line_freq', 
@@ -224,16 +240,11 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     
-    affine, coreg, fid_label, fid_pnt = _confirm_inputs(
+    fid_dict = main(
         spm_meg_fname=args.spm_mat, 
         nii_fname=args.t1w_nii, 
         orig_meg_fname=args.orig_meg)
     
-    fid_dict = main(affine=affine,
-                     coreg=coreg, 
-                     spm_fid_label=fid_label, 
-                     spm_fid_pnt=fid_pnt, 
-                     nii_fname=args.t1w_nii)
     print(fid_dict)
     
     
