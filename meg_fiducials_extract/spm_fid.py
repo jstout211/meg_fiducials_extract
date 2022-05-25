@@ -5,6 +5,12 @@ Created on Mon May 23 09:40:49 2022
 
 @author: jstout
 """
+import mne
+import nibabel as nb
+import copy
+from mne.transforms import apply_trans
+import numpy as np
+
 # from scipy.io import loadmat
 # import matlab.engine 
 # eng = matlab.engine.start_matlab()
@@ -14,7 +20,6 @@ Created on Mon May 23 09:40:49 2022
 # Names = eng.getfield(Obj, 'name')
 # Strs = eng.getfield(Obj, 'structures')
 # StrLists = eng.getfield(Obj, 'structlist')
-
 
 # =============================================================================
 # >>> Code from https://stackoverflow.com/questions/7008608/scipy-io-loadmat-nested-structures-i-e-dictionaries
@@ -55,12 +60,9 @@ def _todict(matobj):
     return dict
 
 # =============================================================================
-# <<<< End
+# <<<< End of Stackoverflow code
 # =============================================================================
-import mne
-import nibabel as nb
-import copy
-from mne.transforms import apply_trans
+
 def convert2vox(t1_fname, coords_dict):
     t1 = nb.load(t1_fname)
     t1_mgh = nb.MGHImage(t1.dataobj, t1.affine)
@@ -72,28 +74,33 @@ def convert2vox(t1_fname, coords_dict):
     return vox_coords
 
 spm_meg_fname='espmeeg_APBWVFAR_airpuff_20200122_05.mat'
+nii_fname = '/fast/OPEN/APBWVFAR/APBWVFAR.nii'
+mr_obj = nb.load(nii_fname)
+
+#Load spm matrix
 tmp_ = loadmat(spm_meg_fname)
 D = tmp_['D']
 
-#MEG locations
-D['fiducials']['fid'] #.label
-D.fiducials.fid.pnt
-
 #MRI locations
-# D['inv']
-# D.inv{1}.datareg
+# D.other.inv{1}.datareg.fid_mri.fid.pnt
+# mri_fids =  D['other']['inv']['datareg']['fid_mri']['fid']
 
-inv_mat = D['other']['inv']['datareg']['fromMNI']
-
-_label = D['fiducials']['fid']['label']
-_pnt = D['fiducials']['fid']['pnt']
+_label = mri_fids['label'] 
+_pnt = mri_fids['pnt'] 
 fids = {i:j for i,j in zip(_label, _pnt)}
 
-trans = mne.transforms.Transform('head','mri')
-trans['trans'] = inv_mat #*1000
-apply_trans(trans, 
-            _pnt)
+# =============================================================================
+# Get fids from SPM - from SPM listserve
+# apply D.inv{val}.mesh.Affine\D.inv{val}.datareg.toMNI
+# to D.inv{val}.datareg.fid_mri.fid.fid.pnt
+# =============================================================================
 
+
+inv_mat = np.linalg.inv(D['other']['inv']['mesh']['Affine']) @ \
+    D['other']['inv']['datareg']['toMNI']
+origMR_pnts = apply_trans(inv_mat, _pnt)
+
+fids_orig = {i:j for i,j in zip(_label, origMR_pnts)}
 
 
 
