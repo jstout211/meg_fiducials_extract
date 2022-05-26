@@ -211,7 +211,7 @@ def main(spm_meg_fname=None,
                      coreg=coreg, 
                      spm_fid_label=fid_label, 
                      spm_fid_pnt=fid_pnt, 
-                     nii_fname=t1w_nii)
+                     nii_fname=nii_fname)
     return fid_dict
         
         
