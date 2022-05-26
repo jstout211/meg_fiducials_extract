@@ -72,8 +72,7 @@ def convert2vox(t1_fname, coords_dict):
     return vox_coords
 
 def _confirm_inputs(spm_meg_fname=None, 
-                    nii_fname=None, 
-                    orig_meg_fname=None):
+                    nii_fname=None):
     '''
     Verify that everything is in order for processing
 
@@ -93,11 +92,6 @@ def _confirm_inputs(spm_meg_fname=None,
     '''
     if not op.exists(spm_meg_fname):
         logger.exception(f'No file found: {spm_meg_fname}')
-    if not op.exists(orig_meg_fname):
-        logger.exception(f'No file found: {orig_meg_fname}')
-
-    # NEED to put in data reader section for MNE
-    #<<<>>>
     
     #Load SPM meg matrix
     try:
@@ -180,8 +174,7 @@ def get_fid_locations(affine=None,
 
 
 def main(spm_meg_fname=None, 
-        nii_fname=None, 
-        orig_meg_fname=None):
+        nii_fname=None):
     '''
     Convert the SPM coregistration to image voxels.
     
@@ -193,8 +186,6 @@ def main(spm_meg_fname=None,
         Path to spm .mat file.
     nii_fname : path string, required
         Path to original nifti image imported to SPM
-    orig_meg_fname : path string, required
-        Original vendor meg file.
 
     Returns
     -------
@@ -204,8 +195,7 @@ def main(spm_meg_fname=None,
     
     affine, coreg, fid_label, fid_pnt = _confirm_inputs(
         spm_meg_fname=spm_meg_fname, 
-        nii_fname=nii_fname, 
-        orig_meg_fname=orig_meg_fname)
+        nii_fname=nii_fname)
     
     fid_dict = get_fid_locations(affine=affine,
                      coreg=coreg, 
@@ -230,20 +220,12 @@ if __name__ == '__main__':
                         coregistration.  This data must have an inverse model
                         performed in order for this script to work.''',
                         required=True)
-    parser.add_argument('-orig_meg', 
-                        help='''The original dataset in:
-                            CTF, MEGIN, 4D, or KIT/Ricoh format
-                        ''',
-                        required=True)
-    parser.add_argument('-line_freq', 
-                        help='Frequency of electrical power 50 or 60Hz')
     
     args = parser.parse_args()
     
     fid_dict = main(
         spm_meg_fname=args.spm_mat, 
-        nii_fname=args.t1w_nii, 
-        orig_meg_fname=args.orig_meg)
+        nii_fname=args.t1w_nii)
     
     print(fid_dict)
     
