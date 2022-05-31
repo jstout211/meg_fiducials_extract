@@ -9,7 +9,9 @@ SPM:
 - Commands to extract coregistration from spm .mat file and generate bids
 
 Fieldtrip:
-- Exports to BIDS
+- Exports to BIDS:
+- data2bids.m -- https://github.com/fieldtrip/fieldtrip/blob/release/data2bids.m
+- example: https://www.fieldtriptoolbox.org/example/bids_audio/
 
 MNE: 
 - Straightforward export to BIDS
