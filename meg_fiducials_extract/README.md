@@ -24,6 +24,25 @@ optional arguments:
 SPM: 
 - Does not currently export to bids
 - Commands to extract coregistration from spm .mat file and generate bids
+```
+meg_fiducials_extract/meg_fiducials_extract/make_spm_bids.py -h 
+usage: make_spm_bids.py [-h] -t1w_nii T1W_NII -spm_mat SPM_MAT -orig_meg ORIG_MEG
+                        [-line_freq LINE_FREQ]
+
+Extract the positions of the fiducials from the SPM mat file and invert the transform to
+get the original locations of the fiducials relative to the input nifti image
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t1w_nii T1W_NII      Original T1w nifti image used for coregstration in SPM
+  -spm_mat SPM_MAT      The SPM .mat file that was used in the coregistration. This data
+                        must have an inverse model performed in order for this script to
+                        work.
+  -orig_meg ORIG_MEG    The original dataset in: CTF, MEGIN, 4D, or KIT/Ricoh format
+  -line_freq LINE_FREQ  Frequency of electrical power 50 or 60Hz
+
+```
+
 
 Fieldtrip:
 - Exports to BIDS:
